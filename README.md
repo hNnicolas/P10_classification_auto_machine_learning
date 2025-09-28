@@ -31,5 +31,5 @@ La mission consiste à :
 
 ### 1. Cloner le dépôt
 ```bash
-git clone https://github.com/mon-profil/hr-analytics-demission.git
-cd hr-analytics-demission
+[git clone https://github.com/mon-profil/hr-analytics-demission.git](https://github.com/hNnicolas/P10_classification_auto_machine_learning)
+
