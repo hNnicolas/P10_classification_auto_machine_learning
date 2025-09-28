@@ -15,14 +15,13 @@ La mission consiste à :
 
 ## 📂 Contenu du dépôt
 
-- `pyproject.toml` → Gestion des dépendances et compatibilités Python (≥3.10, <3.13).  
-- `notebooks/` → Exploration, préparation et modélisation sous Jupyter Notebook.  
-  - Exemple : `Nicolas_Huang_1_notebook_102025.ipynb`
-- `scripts/` → Script Python exécutable reprenant toute la pipeline ML :  
-  - `Nicolas_Huang_2_script_102025.py`
+- `Huang_Nicolas_1_fichier.toml` → Gestion des dépendances et compatibilités Python (≥3.10, <3.13).  
+- `scripts/` → Script Python exécutable reprenant toute la pipeline ML :
+  - `Huang_Nicolas_2_notebook.ipynb`
+  - `Huang_Nicolas_2_notebook.py`
 - `data/` → Jeux de données fournis (`extrait_sirh.csv`, `extrait_eval.csv`, `extrait_sondage.csv`).  
 - `presentation/` → Support PowerPoint pour le CODIR.  
-  - `Nicolas_Huang_3_presentation_102025.pptx`
+  - `P10_Machine_Learning_Huang_Nicolas_102025.pptx`
 - `README.md` (ce fichier).
 
 ---
