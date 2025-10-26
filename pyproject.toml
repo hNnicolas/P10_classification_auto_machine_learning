@@ -5,7 +5,7 @@ description = "Analyse des causes de démission des employés de TechNova Partne
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 authors = [
-    { name = "Nicolas", email = "nicolas@example.com" }
+    { name = "Nicolas", email = "huang.nicola@gmail.com" }
 ]
 
 dependencies = [
@@ -16,7 +16,5 @@ dependencies = [
     "scikit-learn>=1.3",
     "jupyter>=1.0",
     "notebook>=7.0",
-    "shap>=0.44",
+    "shap>=0.44"
 ]
-
-[tool.uv]

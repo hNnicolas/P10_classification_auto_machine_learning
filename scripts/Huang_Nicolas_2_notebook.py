@@ -1,10 +1,15 @@
 # HR Analytics – Analyse et Préparation des Données
 # Projet TechNova Partners
 
+# --------------------------------------------------
+# Import des packages essentiels
+# --------------------------------------------------
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
 
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
@@ -17,7 +22,7 @@ from sklearn.metrics import classification_report
 from sklearn.inspection import permutation_importance
 from sklearn.base import BaseEstimator, TransformerMixin
 
-# SHAP optionnel
+# SHAP optionnel pour interprétabilité fine
 try:
     import shap
     shap_available = True
@@ -31,11 +36,15 @@ pd.set_option("display.max_columns", None)
 sns.set(style="whitegrid")
 
 # --------------------------------------------------
-# 1. Chargement des fichiers
+# 1. Chargement des fichiers CSV
 # --------------------------------------------------
-sirh = pd.read_csv("data/extrait_sirh.csv")
-evals = pd.read_csv("data/extrait_eval.csv")
-sondage = pd.read_csv("data/extrait_sondage.csv")
+# Chemin absolu basé sur le script
+base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+data_path = os.path.join(base_path, 'data')
+
+sirh = pd.read_csv(os.path.join(data_path, "extrait_sirh.csv"))
+evals = pd.read_csv(os.path.join(data_path, "extrait_eval.csv"))
+sondage = pd.read_csv(os.path.join(data_path, "extrait_sondage.csv"))
 
 # --------------------------------------------------
 # 2. Nettoyage des colonnes
@@ -47,7 +56,6 @@ sondage.columns = sondage.columns.str.lower().str.strip()
 evals['id_employee'] = evals['eval_number'].str.replace('e_', '', case=False).str.replace('E_', '').astype(int)
 sondage = sondage.rename(columns={"code_sondage": "id_employee"})
 
-# Merge
 df = pd.merge(sirh, evals, on="id_employee", how="inner")
 df = pd.merge(df, sondage, on="id_employee", how="inner")
 
@@ -67,7 +75,6 @@ print("Label mapping:", dict(zip(label_encoder.classes_, label_encoder.transform
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
-
 print("Taille X_train:", X_train.shape)
 print("Taille X_test:", X_test.shape)
 
@@ -75,6 +82,7 @@ print("Taille X_test:", X_test.shape)
 # 5. Préprocessing avec regroupement des catégories rares
 # --------------------------------------------------
 class RareCategoryEncoder(BaseEstimator, TransformerMixin):
+    """Regroupe les catégories rares dans 'autre'"""
     def __init__(self, min_freq=0.01):
         self.min_freq = min_freq
         self.frequent_categories_ = {}
@@ -94,7 +102,6 @@ class RareCategoryEncoder(BaseEstimator, TransformerMixin):
 numeric_features = X.select_dtypes(include=['int64','float64']).columns.tolist()
 categorical_features = X.select_dtypes(include=['object']).columns.tolist()
 
-# Nettoyage des colonnes catégorielles (éviter SettingWithCopyWarning)
 for col in categorical_features:
     X_train.loc[:, col] = X_train[col].astype(str).str.strip().str.lower()
     X_test.loc[:, col] = X_test[col].astype(str).str.strip().str.lower()
@@ -165,40 +172,28 @@ print("Test Metrics:")
 print(classification_report(y_test, y_test_pred, zero_division=0))
 
 # --------------------------------------------------
-# 8. Feature importance analysis function
+# 8. Feature importance analysis function avec Plotly
 # --------------------------------------------------
 def feature_importance_analysis(pipeline, X_train, X_test, y_train, y_test, top_k=20):
+    """Analyse et visualisation interactive des features"""
     rf_model = pipeline.named_steps['classifier']
     preproc = pipeline.named_steps['preprocessor']
 
-    # Colonnes après transformation
     cat_pipeline = preproc.named_transformers_['cat']
     ohe = cat_pipeline.named_steps['onehot']
     cat_cols = ohe.get_feature_names_out(categorical_features)
     all_features = np.concatenate([numeric_features, cat_cols])
-    print(f"Nombre total de features transformées: {len(all_features)}")
 
     # 1) Importance native RandomForest
-    try:
-        importances = rf_model.feature_importances_
-        fi_df = pd.DataFrame({'feature': all_features, 'importance': importances})
-        fi_df = fi_df.sort_values('importance', ascending=False)
+    importances = rf_model.feature_importances_
+    fi_df = pd.DataFrame({'feature': all_features, 'importance': importances}).sort_values('importance', ascending=False)
 
-        plt.figure(figsize=(10,6))
-        sns.barplot(x='importance', y='feature', data=fi_df.head(top_k))
-        plt.title("Top features (importance native RandomForest)")
-        plt.tight_layout()
-        plt.show()
-
-        print("-> Barplot des features les plus importantes selon le RandomForest")
-    except Exception as e:
-        print("Erreur importance native:", e)
+    fig = px.bar(fi_df.head(top_k), x='importance', y='feature', orientation='h', title="Top features (importance native RF)")
+    fig.show()
 
     # 2) Permutation importance
-    print("Calcul de la permutation importance (peut être lent)...")
     perm_res = permutation_importance(
-        pipeline, X_test, y_test,
-        n_repeats=10, random_state=42, n_jobs=-1, scoring='f1'
+        pipeline, X_test, y_test, n_repeats=10, random_state=42, n_jobs=-1, scoring='f1'
     )
     perm_df = pd.DataFrame({
         'feature': all_features,
@@ -206,13 +201,8 @@ def feature_importance_analysis(pipeline, X_train, X_test, y_train, y_test, top_
         'importance_std': perm_res.importances_std
     }).sort_values('importance_mean', ascending=False)
 
-    plt.figure(figsize=(10,6))
-    sns.barplot(x='importance_mean', y='feature', data=perm_df.head(top_k))
-    plt.title("Top features (Permutation Importance)")
-    plt.tight_layout()
-    plt.show()
-
-    print("-> Permutation importance : impact réel des features sur la prédiction")
+    fig = px.bar(perm_df.head(top_k), x='importance_mean', y='feature', orientation='h', title="Top features (Permutation Importance)")
+    fig.show()
 
     # 3) SHAP analysis
     if shap_available:
@@ -222,13 +212,13 @@ def feature_importance_analysis(pipeline, X_train, X_test, y_train, y_test, top_
         explainer = shap.TreeExplainer(rf_model)
         shap_values = explainer.shap_values(X_train_transformed)
 
-        # Beeswarm plot (importance globale avec direction)
-        print("SHAP summary (beeswarm) : importance globale des features et leur effet sur la prédiction")
-        shap.summary_plot(shap_values[1], X_train_transformed, feature_names=all_features, show=False)
-        plt.tight_layout()
-        plt.close()
+        # Barplot interactif des valeurs SHAP absolues moyennes
+        shap_mean = np.abs(shap_values[1]).mean(axis=0)
+        shap_df = pd.DataFrame({'feature': all_features, 'shap_mean': shap_mean}).sort_values('shap_mean', ascending=False)
+        fig = px.bar(shap_df.head(top_k), x='shap_mean', y='feature', orientation='h', title="Top features (SHAP mean absolute)")
+        fig.show()
 
-        # Waterfall plot pour des exemples locaux
+        # Waterfall plot local
         try:
             idx_oui = np.where(y_test == 1)[0][0]
             idx_non = np.where(y_test == 0)[0][0]
@@ -245,20 +235,18 @@ def feature_importance_analysis(pipeline, X_train, X_test, y_train, y_test, top_
                 data=X_test_transformed[idx],
                 feature_names=all_features
             ))
-            print("-> Waterfall : interprétation locale des contributions des features pour un individu")
 
 # --------------------------------------------------
 # 9. Analyse des features
 # --------------------------------------------------
 feature_importance_analysis(best_pipeline, X_train, X_test, y_train, y_test, top_k=20)
 
-
 # --------------------------------------------------
 # 10. Résumé rapide
 # --------------------------------------------------
 print("\nRésumé rapide :")
-print("- Dummy vs Logistic vs RandomForest optimisé : comparez la valeur ajoutée du modèle non-linéaire.")
-print("- Vérifiez le surapprentissage (train >> test).")
+print("- Comparaison Dummy / Logistic / RandomForest optimisé.")
+print("- Vérification du surapprentissage (train >> test).")
 print("- Importance native RF = structure interne du modèle.")
-print("- Permutation importance = effet réel sur la prédiction.")
-print("- SHAP = interprétation fine : globale (Beeswarm + Scatter) et locale (Waterfall).")
+print("- Permutation importance = impact réel sur la prédiction.")
+print("- SHAP = interprétation fine globale et locale.")

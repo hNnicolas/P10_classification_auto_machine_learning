@@ -1,0 +1,86 @@
+# ---------------------------
+# Python
+# ---------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pkl
+
+# ---------------------------
+# Environnements virtuels
+# ---------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# ---------------------------
+# Jupyter Notebook / IPython
+# ---------------------------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*.nbconvert.ipynb
+
+# ---------------------------
+# Fichiers de configuration IDE
+# ---------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ---------------------------
+# Fichiers système
+# ---------------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------------
+# Logs et bases de données locales
+# ---------------------------
+*.log
+*.sqlite3
+*.db
+
+# ---------------------------
+# Données sensibles 
+# ---------------------------
+data/*.csv
+data/*.xlsx
+data/*.parquet
+data/*.feather
+data/*.json
+
+# ---------------------------
+# Outputs de notebooks / reports
+# ---------------------------
+output/
+reports/
+*.html
+*.pdf
+*.png
+*.jpg
+*.jpeg
+
+# ---------------------------
+# Poetry / pip / package managers
+# ---------------------------
+.poetry/
+*.egg-info/
+dist/
+build/
+__pypackages__/
+
+# ---------------------------
+# Plotly / Dash / Panel
+# ---------------------------
+*.plotly
+*.dash
+
+# ---------------------------
+# Misc
+# ---------------------------
+*.bak
+*.tmp
