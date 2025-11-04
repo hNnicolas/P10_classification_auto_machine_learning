@@ -40,7 +40,7 @@ La mission consiste à :
 - `data/` → Jeux de données CSV fournis (`extrait_sirh.csv`, `extrait_eval.csv`, `extrait_sondage.csv`).
 - `presentation/` → Support PowerPoint pour le CODIR :
   - `P10_Machine_Learning_Huang_Nicolas_112025.pptx`
-- `public/images/` → Screenshots de la présentation (`slide1.png` → `slide13.png`).
+- `public/images/` → Screenshots de la présentation (`slide1.png` → `slide23.png`).
 - `requirements.txt` → Liste des packages Python nécessaires.
 - `README.md`
 
