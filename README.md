@@ -54,6 +54,7 @@ La mission consiste à :
 git clone https://github.com/hNnicolas/P10_classification_auto_machine_learning.git
 cd P10_classification_auto_machine_learning
 ```
+
 ### 2. Créer un environnement virtuel (recommandé)
 
 ```bash
@@ -76,31 +77,77 @@ python scripts/Huang_Nicolas_2_notebook.py
 
 ## 💡 Analyses réalisées
 
-Nettoyage et fusion des données issues de trois sources.
+Préparation et nettoyage des données
 
-Analyse descriptive des employés selon départ/non-départ.
+Fusion de trois jeux de données (SIRH, évaluations, sondages)
 
-Transformation des variables pour les modèles ML (encodage, scaling, regroupement des catégories rares).
+Suppression des doublons et harmonisation des identifiants employés
 
-Entraînement de modèles : Dummy, Logistic Regression, RandomForest.
+Gestion des valeurs manquantes et des formats de variables
 
-Évaluation des modèles via métriques F1, précision, rappel.
+Analyse exploratoire
 
-Optimisation des hyperparamètres pour RandomForest avec GridSearchCV.
+Étude de la répartition des départs (16 % d’attrition)
 
-Feature importance :
+Analyse de corrélation des variables numériques
 
-Importance native RandomForest
+Visualisation des distributions clés (ancienneté, satisfaction, performance)
 
-Permutation importance
+Préparation pour le machine learning
 
-Analyse SHAP (global et local)
+Encodage des variables catégorielles (OneHotEncoder)
 
-Identification des facteurs clés pouvant influencer la démission.
+Regroupement des catégories rares
+
+Standardisation des variables numériques
+
+Séparation en X (features) et y (cible)
+
+Modélisation
+
+Modèles testés : Dummy, Logistic Regression, Random Forest
+
+Gestion du déséquilibre de classes (class_weight='balanced')
+
+Optimisation des hyperparamètres (GridSearchCV)
+
+Évaluation via Accuracy, Precision, Recall, F1-score
+
+Interprétation
+
+Feature importance native du RandomForest
+
+Importance par permutation
+
+## 📈 Résultats & Insights clés
+
+Meilleur modèle : LogisticRegression
+
+Métrique Valeur
+Accuracy 0.762
+Précision 0.371
+Rappel 0.702
+F1-score 0.485
+
+🧠 Interprétation :
+
+Le modèle met l’accent sur le rappel, ce qui signifie qu’il identifie bien les employés à risque de départ, quitte à produire quelques faux positifs.
+
+Cette approche est pertinente dans un contexte RH où mieux vaut prévenir un départ que manquer un signal d’alerte.
+
+Les variables les plus importantes identifiées concernent :
+
+La satisfaction au travail
+
+L’ancienneté dans l’entreprise
+
+Les notes d’évaluation
+
+Le département / manager
 
 ## 🖼️ Visualisation de la présentation
 
-Les slides de la présentation sont inclus dans le dossier `public/images/` :  
+Les slides de la présentation sont inclus dans le dossier `public/images/` :
 
 ![Slide 1](public/images/slide1.png)
 ![Slide 2](public/images/slide2.png)
@@ -115,8 +162,18 @@ Les slides de la présentation sont inclus dans le dossier `public/images/` :
 ![Slide 11](public/images/slide11.png)
 ![Slide 12](public/images/slide12.png)
 ![Slide 13](public/images/slide13.png)
+![Slide 14](public/images/slide14.png)
+![Slide 15](public/images/slide15.png)
+![Slide 16](public/images/slide16.png)
+![Slide 17](public/images/slide17.png)
+![Slide 18](public/images/slide18.png)
+![Slide 19](public/images/slide19.png)
+![Slide 20](public/images/slide20.png)
+![Slide 21](public/images/slide21.png)
+![Slide 22](public/images/slide22.png)
+![Slide 23](public/images/slide23.png)
 
-Graphiques inclus dans le script Python (`scripts/Huang_Nicolas_2_notebook.py`) pour illustrer :  
+Graphiques inclus dans le script Python (`scripts/Huang_Nicolas_2_notebook.py`) pour illustrer :
 
 - Comparaison des modèles
 - Distribution des employés
@@ -139,5 +196,4 @@ Environnement : Terminal / IDE (VS Code, PyCharm, etc.)
 
 ## ✍️ Auteurs
 
-Nicolas Huang 
-
+Nicolas Huang
