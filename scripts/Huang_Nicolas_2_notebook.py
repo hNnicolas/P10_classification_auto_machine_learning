@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.subplots as sp
+import scipy.stats as stats
 
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
@@ -47,15 +49,12 @@ sirh.columns = sirh.columns.str.lower().str.strip()
 evals.columns = evals.columns.str.lower().str.strip()
 sondage.columns = sondage.columns.str.lower().str.strip()
 
-# Nettoyage des identifiants employés
 evals['id_employee'] = evals['eval_number'].str.replace('e_', '', case=False).str.replace('E_', '').astype(int)
 sondage = sondage.rename(columns={"code_sondage": "id_employee"})
 
-# Fusion des différentes sources
 df = pd.merge(sirh, evals, on="id_employee", how="inner")
 df = pd.merge(df, sondage, on="id_employee", how="inner")
 
-# Suppression des doublons
 before = df.shape[0]
 df = df.drop_duplicates()
 after = df.shape[0]
@@ -89,13 +88,12 @@ categorical_features = X.select_dtypes(include=['object']).columns.tolist()
 print("Colonnes numériques :", numeric_features)
 print("Colonnes catégorielles :", categorical_features)
 
-# Nettoyage des colonnes catégorielles
 for col in categorical_features:
     X_train[col] = X_train[col].astype(str).str.strip().str.lower()
     X_test[col] = X_test[col].astype(str).str.strip().str.lower()
 
 # --------------------------------------------------
-# 4c. Visualisations exploratoires avec Plotly
+# 4c. Visualisations exploratoires améliorées
 # --------------------------------------------------
 
 # Répartition de la classe cible
@@ -105,9 +103,13 @@ print("Nombre d'employés par classe :\n", class_counts)
 print("\nPourcentage par classe :\n", class_percent)
 print("\nObservation : déséquilibre de classes → 84 % restent, 16 % quittent")
 
-fig = px.histogram(x=y_train, nbins=2,
-                   labels={"x":"Attrition", "y":"Nombre d'employés"},
-                   title="Répartition de la classe cible (Attrition)")
+fig = px.histogram(
+    x=y_train, nbins=2,
+    labels={"x":"Attrition", "y":"Nombre d'employés"},
+    title="Répartition de la classe cible (Attrition)",
+    template="plotly_white",
+    color_discrete_sequence=['teal']
+)
 fig.update_xaxes(tickvals=[0,1], ticktext=["Reste", "Quitte"])
 fig.show()
 
@@ -117,48 +119,64 @@ fig = go.Figure(data=go.Heatmap(
     z=corr_matrix.values,
     x=corr_matrix.columns,
     y=corr_matrix.columns,
-    colorscale='Blues',
+    colorscale='Viridis',
+    zmin=-1, zmax=1,
     text=np.round(corr_matrix.values,2),
     texttemplate="%{text}"
 ))
-fig.update_layout(title="Heatmap des variables numériques")
+fig.update_layout(
+    title="Heatmap des variables numériques",
+    xaxis_title="Variables",
+    yaxis_title="Variables",
+    width=700,
+    height=700,
+    template="plotly_white"
+)
 fig.show()
 
-# --------------------------------------------------
-# 4d. Distribution des variables clés 
-# --------------------------------------------------
-import plotly.subplots as sp
-
-# Sélection des variables existantes dans le jeu
+# Distribution des variables clés avec KDE
 key_vars = [
     'annees_dans_l_entreprise', 
     'note_evaluation_actuelle', 
     'satisfaction_employee_environnement'
 ]
-
-# Vérification que ces colonnes existent dans X_train
 key_vars = [col for col in key_vars if col in X_train.columns]
 print("Variables utilisées pour la distribution :", key_vars)
 
-if len(key_vars) > 0:
+if key_vars:
     fig = sp.make_subplots(rows=1, cols=len(key_vars), subplot_titles=key_vars)
-    
+    colors = px.colors.sequential.Teal
     for i, col in enumerate(key_vars, start=1):
+        x = X_train[col].dropna()
         fig.add_trace(
-            go.Histogram(x=X_train[col], nbinsx=30, name=col, marker_color='steelblue', opacity=0.7),
+            go.Histogram(
+                x=x, nbinsx=30,
+                marker_color=colors[i % len(colors)],
+                opacity=0.6,
+                showlegend=False
+            ),
             row=1, col=i
         )
-
+        kde = stats.gaussian_kde(x)
+        x_range = np.linspace(x.min(), x.max(), 100)
+        fig.add_trace(
+            go.Scatter(
+                x=x_range, y=kde(x_range) * len(x) * (x.max()-x.min())/30,
+                mode='lines',
+                line=dict(color='darkblue', width=2),
+                showlegend=False
+            ),
+            row=1, col=i
+        )
     fig.update_layout(
-        title_text="Distribution des variables clés (ancienneté, évaluation, satisfaction)",
-        showlegend=False,
+        title_text="Distribution des variables clés avec courbe KDE",
         height=500,
-        width=1200
+        width=1200,
+        template="plotly_white"
     )
     fig.show()
 else:
     print("⚠️ Aucune variable disponible pour la distribution.")
-
 
 # --------------------------------------------------
 # 5. Préprocessing avec regroupement des catégories rares
@@ -190,7 +208,7 @@ preprocessor = ColumnTransformer([
 ])
 
 # --------------------------------------------------
-# 6. Évaluation des modèles + Résultats graphiques
+# 6. Évaluation des modèles + Résultats graphiques améliorés
 # --------------------------------------------------
 models = {
     "Dummy": DummyClassifier(strategy="most_frequent", random_state=42),
@@ -220,11 +238,18 @@ def evaluate_model(name, pipeline, X_train, X_test, y_train, y_test):
         text=cm, texttemplate="%{text}",
         colorscale="Blues"
     ))
-    fig_cm.update_layout(title=f"Matrice de confusion – {name}")
+    fig_cm.update_layout(title=f"Matrice de confusion – {name}", template="plotly_white")
     fig_cm.show()
 
     # Histogramme des prédictions
-    fig_pred = px.histogram(x=y_test_pred, nbins=2, title=f"Distribution des prédictions – {name}", labels={"x":"Classe prédite"})
+    fig_pred = px.histogram(
+        x=y_test_pred, nbins=2,
+        title=f"Distribution des prédictions – {name}",
+        labels={"x":"Classe prédite"},
+        template="plotly_white",
+        color_discrete_sequence=['orange']
+    )
+    fig_pred.update_xaxes(tickvals=[0,1], ticktext=["Reste", "Quitte"])
     fig_pred.show()
 
     results.append({"Modèle": name, "Accuracy": acc, "Precision": prec, "Recall": rec, "F1-score": f1})
@@ -233,15 +258,34 @@ for name, model in models.items():
     pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", model)])
     evaluate_model(name, pipeline, X_train, X_test, y_train, y_test)
 
-# Comparatif des modèles de base
-base_results_df = pd.DataFrame(results)
-fig_base = px.bar(
-    base_results_df.melt(id_vars="Modèle", value_vars=["Accuracy", "Precision", "Recall", "F1-score"]),
-    x="Modèle", y="value", color="variable", barmode="group",
-    title="Scores des modèles de base"
+# --------------------------------------------------
+# Comparatif global des modèles (esthétique améliorée)
+# --------------------------------------------------
+results_df = pd.DataFrame(results)
+results_df_plot = results_df.melt(id_vars="Modèle", value_vars=["Accuracy","Precision","Recall","F1-score"])
+
+fig = px.bar(
+    results_df_plot,
+    x="value",
+    y="Modèle",
+    color="variable",
+    barmode="group",
+    orientation='h',
+    text='value',
+    text_auto='.2f',
+    title="Comparaison globale des performances des modèles",
+    template="plotly_white",
+    color_discrete_sequence=px.colors.qualitative.Vivid
 )
-fig_base.update_layout(yaxis_title="Score", legend_title="Métrique")
-fig_base.show()
+
+fig.update_layout(
+    xaxis_title="Score",
+    yaxis_title="Modèle",
+    legend_title="Métrique",
+    yaxis={'categoryorder':'total ascending'},
+    height=600
+)
+fig.show()
 
 # --------------------------------------------------
 # 7. RandomForest optimisé
@@ -264,23 +308,10 @@ grid_search.fit(X_train, y_train)
 print("\nMeilleurs hyperparamètres RandomForest :", grid_search.best_params_)
 best_pipeline = grid_search.best_estimator_
 
-# Évaluation
 evaluate_model("RandomForest Optimisé", best_pipeline, X_train, X_test, y_train, y_test)
 
 # --------------------------------------------------
-# 8. Tableau récapitulatif et comparatif
-# --------------------------------------------------
-results_df = pd.DataFrame(results)
-fig = px.bar(
-    results_df.melt(id_vars="Modèle", value_vars=["Accuracy", "Precision", "Recall", "F1-score"]),
-    x="Modèle", y="value", color="variable", barmode="group",
-    title="Comparaison des performances des modèles"
-)
-fig.update_layout(yaxis_title="Score", legend_title="Métrique")
-fig.show()
-
-# --------------------------------------------------
-# 9. Analyse des features avec Plotly
+# 8. Analyse des features avec Plotly
 # --------------------------------------------------
 def feature_importance_analysis(pipeline, X_train, X_test, y_train, y_test, top_k=20):
     rf_model = pipeline.named_steps['classifier']
@@ -294,7 +325,13 @@ def feature_importance_analysis(pipeline, X_train, X_test, y_train, y_test, top_
     # Importance native RF
     importances = rf_model.feature_importances_
     fi_df = pd.DataFrame({'feature': all_features, 'importance': importances}).sort_values('importance', ascending=False)
-    fig = px.bar(fi_df.head(top_k), x='importance', y='feature', orientation='h', title="Top features (RF importance)")
+    fig = px.bar(
+        fi_df.head(top_k), x='importance', y='feature',
+        orientation='h', color='importance', color_continuous_scale='Viridis',
+        title="Top features (RF importance)",
+        template="plotly_white"
+    )
+    fig.update_layout(yaxis={'categoryorder':'total ascending'})
     fig.show()
 
     # Permutation importance
@@ -302,23 +339,35 @@ def feature_importance_analysis(pipeline, X_train, X_test, y_train, y_test, top_
     perm_res = permutation_importance(rf_model, X_test_transformed, y_test, n_repeats=10, random_state=42, n_jobs=-1, scoring='f1')
     min_len = min(len(perm_res.importances_mean), len(all_features))
     perm_df = pd.DataFrame({'feature': all_features[:min_len], 'importance_mean': perm_res.importances_mean[:min_len]}).sort_values('importance_mean', ascending=False)
-    fig = px.bar(perm_df.head(top_k), x='importance_mean', y='feature', orientation='h', title="Top features (Permutation Importance)")
+    fig = px.bar(
+        perm_df.head(top_k), x='importance_mean', y='feature',
+        orientation='h', color='importance_mean', color_continuous_scale='Viridis',
+        title="Top features (Permutation Importance)",
+        template="plotly_white"
+    )
+    fig.update_layout(yaxis={'categoryorder':'total ascending'})
     fig.show()
 
-    # SHAP 
+    # SHAP
     if shap_available:
         X_train_transformed = preproc.transform(X_train)
         explainer = shap.TreeExplainer(rf_model)
         shap_values = explainer.shap_values(X_train_transformed)
         shap_mean = np.abs(shap_values[1]).mean(axis=0)
         shap_df = pd.DataFrame({'feature': all_features[:min(len(all_features), len(shap_mean))], 'shap_mean': shap_mean[:min(len(all_features), len(shap_mean))]}).sort_values('shap_mean', ascending=False)
-        fig = px.bar(shap_df.head(top_k), x='shap_mean', y='feature', orientation='h', title="Top features (SHAP mean absolute)")
+        fig = px.bar(
+            shap_df.head(top_k), x='shap_mean', y='feature',
+            orientation='h', color='shap_mean', color_continuous_scale='Viridis',
+            title="Top features (SHAP mean absolute)",
+            template="plotly_white"
+        )
+        fig.update_layout(yaxis={'categoryorder':'total ascending'})
         fig.show()
 
 feature_importance_analysis(best_pipeline, X_train, X_test, y_train, y_test, top_k=20)
 
 # --------------------------------------------------
-# 10. Insights automatiques chiffrés
+# 9. Insights automatiques chiffrés
 # --------------------------------------------------
 best = results_df.sort_values("F1-score", ascending=False).iloc[0]
 print("\n=== 🧠 Insights clés ===")
