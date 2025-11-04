@@ -59,7 +59,6 @@ data/*.json
 output/
 reports/
 *.html
-*.png
 *.jpg
 *.jpeg
 
