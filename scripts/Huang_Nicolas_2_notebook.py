@@ -52,8 +52,8 @@ sondage.columns = sondage.columns.str.lower().str.strip()
 evals['id_employee'] = evals['eval_number'].str.replace('e_', '', case=False).str.replace('E_', '').astype(int)
 sondage = sondage.rename(columns={"code_sondage": "id_employee"})
 
-df = pd.merge(sirh, evals, on="id_employee", how="inner")
-df = pd.merge(df, sondage, on="id_employee", how="inner")
+df = pd.merge(sirh, evals, on="id_employee", how="outer")
+df = pd.merge(df, sondage, on="id_employee", how="outer")
 
 before = df.shape[0]
 df = df.drop_duplicates()
@@ -71,6 +71,18 @@ y = label_encoder.fit_transform(y_raw)
 print("Label mapping:", dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_))))
 
 # --------------------------------------------------
+# 3b. Contrôles qualité avant split
+# --------------------------------------------------
+print("Nb de colonnes SIRH :", len(sirh.columns))
+print("Nb de colonnes EVAL :", len(evals.columns))
+print("Nb de colonnes SONDAGE :", len(sondage.columns))
+
+print("Nb total colonnes fusionné :", len(df.columns))
+print("Colonnes fusionné :", df.columns.tolist())
+
+
+
+# --------------------------------------------------
 # 4. Split train/test
 # --------------------------------------------------
 X_train, X_test, y_train, y_test = train_test_split(
@@ -78,6 +90,21 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 print("Taille X_train:", X_train.shape)
 print("Taille X_test:", X_test.shape)
+
+# --------------------------------------------------
+# 4b. Contrôles qualité après split
+# --------------------------------------------------
+print("X total :", X.shape[0])
+print("train :", X_train.shape[0])
+print("test :", X_test.shape[0])
+print("train + test =", X_train.shape[0] + X_test.shape[0])
+
+assert X.shape[0] == X_train.shape[0] + X_test.shape[0], "ERREUR : perte de données !!!"
+print("✓ check : aucune ligne perdue sur le split")
+
+assert set(X.columns) == set(X_train.columns) == set(X_test.columns)
+print("✓ check : toutes les mêmes colonnes côté train et test")
+
 
 # --------------------------------------------------
 # 4b. Colonnes numériques et catégorielles
@@ -259,11 +286,52 @@ for name, model in models.items():
     evaluate_model(name, pipeline, X_train, X_test, y_train, y_test)
 
 # --------------------------------------------------
-# Comparatif global des modèles (esthétique améliorée)
+# 6. Évaluation de tous les modèles
+# --------------------------------------------------
+results = []
+
+models = {
+    "Dummy": DummyClassifier(strategy="most_frequent", random_state=42),
+    "LogisticRegression": LogisticRegression(max_iter=1000, class_weight='balanced')
+}
+
+def evaluate_model(name, pipeline, X_train, X_test, y_train, y_test):
+    pipeline.fit(X_train, y_train)
+    y_test_pred = pipeline.predict(X_test)
+    acc = accuracy_score(y_test, y_test_pred)
+    prec = precision_score(y_test, y_test_pred, zero_division=0)
+    rec = recall_score(y_test, y_test_pred, zero_division=0)
+    f1 = f1_score(y_test, y_test_pred, zero_division=0)
+    print(f"\n=== {name} ===")
+    print(classification_report(y_test, y_test_pred, zero_division=0))
+    results.append({"Modèle": name, "Accuracy": acc, "Precision": prec, "Recall": rec, "F1-score": f1})
+
+# Évaluer Dummy et LogisticRegression
+for name, model in models.items():
+    pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", model)])
+    evaluate_model(name, pipeline, X_train, X_test, y_train, y_test)
+
+# RandomForest optimisé
+rf_pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", RandomForestClassifier(random_state=42, class_weight="balanced"))])
+param_grid = {
+    "classifier__n_estimators": [100, 200],
+    "classifier__max_depth": [5, 10, None],
+    "classifier__min_samples_split": [2, 5, 10],
+    "classifier__min_samples_leaf": [1, 2, 5],
+}
+grid_search = GridSearchCV(rf_pipeline, param_grid, cv=3, scoring="f1", n_jobs=-1, verbose=2)
+grid_search.fit(X_train, y_train)
+best_pipeline = grid_search.best_estimator_
+print("\nMeilleurs hyperparamètres RandomForest :", grid_search.best_params_)
+
+# Évaluer RandomForest optimisé
+evaluate_model("RandomForest Optimisé", best_pipeline, X_train, X_test, y_train, y_test)
+
+# --------------------------------------------------
+# 7. Comparatif global des modèles
 # --------------------------------------------------
 results_df = pd.DataFrame(results)
 results_df_plot = results_df.melt(id_vars="Modèle", value_vars=["Accuracy","Precision","Recall","F1-score"])
-
 fig = px.bar(
     results_df_plot,
     x="value",
@@ -277,38 +345,9 @@ fig = px.bar(
     template="plotly_white",
     color_discrete_sequence=px.colors.qualitative.Vivid
 )
-
-fig.update_layout(
-    xaxis_title="Score",
-    yaxis_title="Modèle",
-    legend_title="Métrique",
-    yaxis={'categoryorder':'total ascending'},
-    height=600
-)
+fig.update_layout(xaxis_title="Score", yaxis_title="Modèle", legend_title="Métrique", yaxis={'categoryorder':'total ascending'}, height=600)
 fig.show()
 
-# --------------------------------------------------
-# 7. RandomForest optimisé
-# --------------------------------------------------
-rf_pipeline = Pipeline([
-    ("preprocessor", preprocessor),
-    ("classifier", RandomForestClassifier(random_state=42, class_weight="balanced"))
-])
-
-param_grid = {
-    "classifier__n_estimators": [100, 200],
-    "classifier__max_depth": [5, 10, None],
-    "classifier__min_samples_split": [2, 5, 10],
-    "classifier__min_samples_leaf": [1, 2, 5],
-}
-
-grid_search = GridSearchCV(rf_pipeline, param_grid, cv=3, scoring="f1", n_jobs=-1, verbose=2)
-grid_search.fit(X_train, y_train)
-
-print("\nMeilleurs hyperparamètres RandomForest :", grid_search.best_params_)
-best_pipeline = grid_search.best_estimator_
-
-evaluate_model("RandomForest Optimisé", best_pipeline, X_train, X_test, y_train, y_test)
 
 # --------------------------------------------------
 # 8. Analyse des features avec Plotly
