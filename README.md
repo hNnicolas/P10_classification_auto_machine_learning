@@ -165,10 +165,6 @@ Les slides de la présentation sont inclus dans le dossier `public/images/` :
 ![Slide 14](public/images/slide14.png)
 ![Slide 15](public/images/slide15.png)
 ![Slide 16](public/images/slide16.png?v=2)
-<<<<<<< HEAD
-
-=======
->>>>>>> 7f762ca (update  slide16 in README)
 ![Slide 17](public/images/slide17.png)
 ![Slide 18](public/images/slide18.png)
 ![Slide 19](public/images/slide19.png)
