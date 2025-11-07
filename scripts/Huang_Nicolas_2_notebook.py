@@ -235,12 +235,8 @@ preprocessor = ColumnTransformer([
 ])
 
 # --------------------------------------------------
-# 6. Évaluation des modèles + Résultats graphiques améliorés
+# 6. Évaluation des modèles
 # --------------------------------------------------
-models = {
-    "Dummy": DummyClassifier(strategy="most_frequent", random_state=42),
-    "LogisticRegression": LogisticRegression(max_iter=1000, class_weight='balanced'),
-}
 
 results = []
 
@@ -256,19 +252,20 @@ def evaluate_model(name, pipeline, X_train, X_test, y_train, y_test):
     print(f"\n=== {name} ===")
     print(classification_report(y_test, y_test_pred, zero_division=0))
 
-    # Matrice de confusion interactive
+    # 🔵 matrice de confusion
     cm = confusion_matrix(y_test, y_test_pred)
     fig_cm = go.Figure(data=go.Heatmap(
         z=cm,
         x=["Prédit: Non", "Prédit: Oui"],
         y=["Réel: Non", "Réel: Oui"],
-        text=cm, texttemplate="%{text}",
+        text=cm,
+        texttemplate="%{text}",
         colorscale="Blues"
     ))
     fig_cm.update_layout(title=f"Matrice de confusion – {name}", template="plotly_white")
     fig_cm.show()
 
-    # Histogramme des prédictions
+    # 🟠 histogramme des prédictions
     fig_pred = px.histogram(
         x=y_test_pred, nbins=2,
         title=f"Distribution des prédictions – {name}",
@@ -281,13 +278,10 @@ def evaluate_model(name, pipeline, X_train, X_test, y_train, y_test):
 
     results.append({"Modèle": name, "Accuracy": acc, "Precision": prec, "Recall": rec, "F1-score": f1})
 
-for name, model in models.items():
-    pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", model)])
-    evaluate_model(name, pipeline, X_train, X_test, y_train, y_test)
+# --------------------------------------------------
+# 6b. Évaluation des modèles + RandomForest optimisé
+# --------------------------------------------------
 
-# --------------------------------------------------
-# 6. Évaluation de tous les modèles
-# --------------------------------------------------
 results = []
 
 models = {
@@ -298,40 +292,60 @@ models = {
 def evaluate_model(name, pipeline, X_train, X_test, y_train, y_test):
     pipeline.fit(X_train, y_train)
     y_test_pred = pipeline.predict(X_test)
+
     acc = accuracy_score(y_test, y_test_pred)
     prec = precision_score(y_test, y_test_pred, zero_division=0)
     rec = recall_score(y_test, y_test_pred, zero_division=0)
     f1 = f1_score(y_test, y_test_pred, zero_division=0)
+
     print(f"\n=== {name} ===")
     print(classification_report(y_test, y_test_pred, zero_division=0))
-    results.append({"Modèle": name, "Accuracy": acc, "Precision": prec, "Recall": rec, "F1-score": f1})
 
-# Évaluer Dummy et LogisticRegression
-for name, model in models.items():
-    pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", model)])
-    evaluate_model(name, pipeline, X_train, X_test, y_train, y_test)
+    results.append({
+        "Modèle": name,
+        "Accuracy": acc,
+        "Precision": prec,
+        "Recall": rec,
+        "F1-score": f1
+    })
 
-# RandomForest optimisé
-rf_pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", RandomForestClassifier(random_state=42, class_weight="balanced"))])
+# ==== RandomForest avec optimisation ====
+
+rf_pipeline = Pipeline([
+    ("preprocessor", preprocessor),
+    ("classifier", RandomForestClassifier(random_state=42, class_weight="balanced"))
+])
+
 param_grid = {
     "classifier__n_estimators": [100, 200],
     "classifier__max_depth": [5, 10, None],
     "classifier__min_samples_split": [2, 5, 10],
     "classifier__min_samples_leaf": [1, 2, 5],
 }
-grid_search = GridSearchCV(rf_pipeline, param_grid, cv=3, scoring="f1", n_jobs=-1, verbose=2)
+
+grid_search = GridSearchCV(
+    rf_pipeline, param_grid, cv=3, scoring="f1", n_jobs=-1, verbose=2
+)
 grid_search.fit(X_train, y_train)
-best_pipeline = grid_search.best_estimator_
+
 print("\nMeilleurs hyperparamètres RandomForest :", grid_search.best_params_)
 
-# Évaluer RandomForest optimisé
-evaluate_model("RandomForest Optimisé", best_pipeline, X_train, X_test, y_train, y_test)
+best_pipeline = grid_search.best_estimator_
+models["RandomForest Optimisé"] = best_pipeline.named_steps["classifier"]
+
+# ==== Évaluation commune de tous les modèles ====
+
+for name, model in models.items():
+    pipeline = Pipeline([("preprocessor", preprocessor), ("classifier", model)])
+    evaluate_model(name, pipeline, X_train, X_test, y_train, y_test)
 
 # --------------------------------------------------
 # 7. Comparatif global des modèles
 # --------------------------------------------------
+
 results_df = pd.DataFrame(results)
 results_df_plot = results_df.melt(id_vars="Modèle", value_vars=["Accuracy","Precision","Recall","F1-score"])
+
 fig = px.bar(
     results_df_plot,
     x="value",
@@ -347,7 +361,6 @@ fig = px.bar(
 )
 fig.update_layout(xaxis_title="Score", yaxis_title="Modèle", legend_title="Métrique", yaxis={'categoryorder':'total ascending'}, height=600)
 fig.show()
-
 
 # --------------------------------------------------
 # 8. Analyse des features avec Plotly
